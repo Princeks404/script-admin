@@ -142,4 +142,4 @@ async function deleteScript(req, res) {
     console.error('Delete script error:', error);
     return res.status(500).json({ error: 'Failed to delete script' });
   }
-    }
+}
