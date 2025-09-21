@@ -1,4 +1,4 @@
-import redis from '../lib/redis.js';
+import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -31,22 +31,15 @@ export default async function handler(req, res) {
 
 async function getScripts(req, res) {
   try {
-    // Get all script keys
-    const keys = await redis.keys('script:*');
+    const scriptKeys = await kv.keys('script:*');
     const scripts = {};
     
-    if (keys.length > 0) {
-      // Get all scripts in one pipeline for better performance
-      const pipeline = redis.pipeline();
-      keys.forEach(key => pipeline.get(key));
-      const results = await pipeline.exec();
-      
-      keys.forEach((key, index) => {
-        if (results[index]) {
-          const id = key.replace('script:', '');
-          scripts[id] = results[index];
-        }
-      });
+    for (const key of scriptKeys) {
+      const scriptData = await kv.get(key);
+      if (scriptData) {
+        const id = key.replace('script:', '');
+        scripts[id] = scriptData;
+      }
     }
     
     return res.json(scripts);
@@ -63,16 +56,16 @@ async function createScript(req, res) {
     return res.status(400).json({ error: 'Name and content are required' });
   }
 
-  // Sanitize name for URL safety
-  const sanitizedName = name.toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+  // FIXED: Keep original name structure, only remove dangerous characters
+  const safeName = name
+    .replace(/[<>:"/\\|?*]/g, '') // Remove only dangerous file system characters
+    .replace(/\s+/g, '-')         // Replace spaces with dashes
+    .toLowerCase();
 
   const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
   const script = {
     id,
-    name: sanitizedName,
+    name: safeName,
     originalName: name,
     content,
     created: new Date().toISOString(),
@@ -80,14 +73,11 @@ async function createScript(req, res) {
   };
 
   try {
-    // Store script data
-    await redis.set(`script:${id}`, JSON.stringify(script));
+    // Store script with ID
+    await kv.set(`script:${id}`, script);
     
     // Create name-to-id mapping for faster lookups
-    await redis.set(`name:${sanitizedName}`, id);
-    
-    // Add to script list for pagination (optional)
-    await redis.sadd('scripts:all', id);
+    await kv.set(`name:${safeName}`, id);
     
     return res.status(201).json(script);
   } catch (error) {
@@ -104,16 +94,15 @@ async function updateScript(req, res) {
   }
 
   try {
-    const scriptData = await redis.get(`script:${id}`);
-    if (!scriptData) {
+    const script = await kv.get(`script:${id}`);
+    if (!script) {
       return res.status(404).json({ error: 'Script not found' });
     }
 
-    const script = JSON.parse(scriptData);
     script.content = content;
     script.updated = new Date().toISOString();
 
-    await redis.set(`script:${id}`, JSON.stringify(script));
+    await kv.set(`script:${id}`, script);
     return res.json(script);
   } catch (error) {
     console.error('Update script error:', error);
@@ -129,22 +118,17 @@ async function deleteScript(req, res) {
   }
 
   try {
-    // Get script data first to clean up name mapping
-    const scriptData = await redis.get(`script:${id}`);
-    if (!scriptData) {
+    // Get script data first
+    const script = await kv.get(`script:${id}`);
+    if (!script) {
       return res.status(404).json({ error: 'Script not found' });
     }
 
-    const script = JSON.parse(scriptData);
-    
-    // Delete script data, name mapping, and from script list
-    const pipeline = redis.pipeline();
-    pipeline.del(`script:${id}`);
-    pipeline.del(`name:${script.name}`);
-    pipeline.srem('scripts:all', id);
-    await pipeline.exec();
+    // Delete script and name mapping
+    await kv.del(`script:${id}`);
+    await kv.del(`name:${script.name}`);
 
-    return res.json({ success: true });
+    return res.json({ success: true, message: 'Script deleted successfully' });
   } catch (error) {
     console.error('Delete script error:', error);
     return res.status(500).json({ error: 'Failed to delete script' });
