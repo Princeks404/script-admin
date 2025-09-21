@@ -68,6 +68,8 @@
             text-decoration: none;
             display: inline-block;
             text-align: center;
+            margin-right: 10px;
+            margin-bottom: 10px;
         }
         .btn-primary {
             background: linear-gradient(45deg, #4CAF50, #45a049);
@@ -81,9 +83,17 @@
             background: linear-gradient(45deg, #f44336, #d32f2f);
             color: white;
         }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
         .btn-secondary {
             background: linear-gradient(45deg, #2196F3, #1976D2);
             color: white;
+        }
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
         }
         .script-list {
             display: grid;
@@ -142,13 +152,35 @@
             margin: 10px 0;
             text-align: center;
         }
+        .success {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        .error-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🚀 Script Manager Admin</h1>
-            <p>Powered by Upstash Redis • Upload and manage your Roblox scripts</p>
+            <p>Upload and manage your Roblox scripts</p>
         </div>
 
         <div class="stats">
@@ -156,23 +188,21 @@
                 <div class="stat-number" id="script-count">0</div>
                 <div class="stat-label">Total Scripts</div>
             </div>
-            <div class="stat-item">
-                <div class="stat-number" id="storage-used">0KB</div>
-                <div class="stat-label">Storage Used</div>
-            </div>
         </div>
 
         <div class="raw-domain">
             <strong>🔗 Raw Script Domain:</strong><br>
-            Scripts are accessible at: <code id="raw-domain-url">https://your-raw-domain.vercel.app/script-name</code>
+            Scripts are accessible at: <code>https://your-raw-domain.vercel.app/script-name</code><br>
+            <small>Update the RAW_DOMAIN variable in this file!</small>
         </div>
 
         <div class="upload-form">
             <h3 style="margin-bottom: 20px;">📝 Upload New Script</h3>
             <form id="upload-form">
                 <div class="form-group">
-                    <label for="script-name">Custom Name:</label>
-                    <input type="text" id="script-name" placeholder="my-awesome-script" required>
+                    <label for="script-name">Script Name:</label>
+                    <input type="text" id="script-name" placeholder="auto.farm" required>
+                    <small style="color: rgba(255,255,255,0.7);">Supports dots, letters, numbers, and dashes</small>
                 </div>
                 <div class="form-group">
                     <label for="script-content">Script Content:</label>
@@ -185,23 +215,18 @@
         <div>
             <h3 style="margin-bottom: 20px;">📋 Uploaded Scripts</h3>
             <div id="script-list" class="script-list">
-                <div class="loading">Loading scripts from Upstash Redis...</div>
+                <div class="loading">Loading scripts...</div>
             </div>
         </div>
     </div>
 
     <script>
-        const RAW_DOMAIN = 'https://princex-script-raw.vercel.app'; // Update this!
+        const RAW_DOMAIN = 'https://princex-script-raw.vercel.app'; // UPDATE THIS!
         let scripts = {};
 
         document.addEventListener('DOMContentLoaded', function() {
             loadScripts();
-            updateRawDomainUrl();
         });
-
-        function updateRawDomainUrl() {
-            document.getElementById('raw-domain-url').textContent = RAW_DOMAIN + '/script-name';
-        }
 
         document.getElementById('upload-form').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -229,14 +254,14 @@
                     await loadScripts();
                     document.getElementById('script-name').value = '';
                     document.getElementById('script-content').value = '';
-                    showSuccess('Script uploaded successfully to Upstash Redis!');
+                    showSuccess('Script uploaded successfully!');
                 } else {
                     const error = await response.json();
                     showError('Error: ' + error.error);
                 }
             } catch (error) {
                 console.error('Upload error:', error);
-                showError('Failed to upload script to Upstash');
+                showError('Failed to upload script');
             } finally {
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = 'Upload Script';
@@ -254,7 +279,7 @@
             } catch (error) {
                 console.error('Failed to load scripts:', error);
                 document.getElementById('script-list').innerHTML = `
-                    <div class="error">Failed to load scripts from Upstash Redis</div>
+                    <div class="error">Failed to load scripts</div>
                 `;
             }
         }
@@ -266,7 +291,7 @@
             if (scriptCount === 0) {
                 scriptList.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; color: rgba(255,255,255,0.6); padding: 40px;">
-                        No scripts in Upstash Redis yet. Upload your first script above!
+                        No scripts uploaded yet. Upload your first script above!
                     </div>
                 `;
                 return;
@@ -274,22 +299,20 @@
 
             scriptList.innerHTML = '';
             
-            Object.entries(scripts).forEach(([id, scriptData]) => {
-                const script = typeof scriptData === 'string' ? JSON.parse(scriptData) : scriptData;
+            Object.entries(scripts).forEach(([id, script]) => {
                 const scriptItem = document.createElement('div');
                 scriptItem.className = 'script-item';
                 scriptItem.innerHTML = `
                     <div class="script-title">${escapeHtml(script.originalName || script.name)}</div>
                     <div class="script-url">${RAW_DOMAIN}/${escapeHtml(script.name)}</div>
                     <div style="font-size: 0.8em; color: rgba(255,255,255,0.7); margin: 8px 0;">
-                        Size: ${formatBytes(script.content.length)}<br>
                         Created: ${new Date(script.created).toLocaleString()}<br>
                         Updated: ${new Date(script.updated).toLocaleString()}
                     </div>
                     <div class="script-actions">
                         <button onclick="copyUrl('${escapeHtml(script.name)}')" class="btn btn-secondary">Copy URL</button>
                         <button onclick="editScript('${id}')" class="btn btn-secondary">Edit</button>
-                        <button onclick="deleteScript('${id}')" class="btn btn-danger">Delete</button>
+                        <button onclick="deleteScript('${id}', '${escapeHtml(script.originalName || script.name)}')" class="btn btn-danger">Delete</button>
                     </div>
                     <div id="edit-${id}" class="edit-form">
                         <textarea id="edit-content-${id}" style="width: 100%; min-height: 150px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 10px; color: white; font-family: 'Courier New', monospace;">${escapeHtml(script.content)}</textarea>
@@ -304,22 +327,7 @@
         }
 
         function updateStats() {
-            const scriptCount = Object.keys(scripts).length;
-            const totalSize = Object.values(scripts).reduce((acc, scriptData) => {
-                const script = typeof scriptData === 'string' ? JSON.parse(scriptData) : scriptData;
-                return acc + script.content.length;
-            }, 0);
-
-            document.getElementById('script-count').textContent = scriptCount;
-            document.getElementById('storage-used').textContent = formatBytes(totalSize);
-        }
-
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + sizes[i];
+            document.getElementById('script-count').textContent = Object.keys(scripts).length;
         }
 
         function copyUrl(name) {
@@ -341,7 +349,10 @@
 
         async function saveEdit(id) {
             const content = document.getElementById(`edit-content-${id}`).value.trim();
-            if (!content) return;
+            if (!content) {
+                showError('Content cannot be empty');
+                return;
+            }
             
             try {
                 const response = await fetch('/api/scripts', {
@@ -352,7 +363,7 @@
 
                 if (response.ok) {
                     await loadScripts();
-                    showSuccess('Script updated in Upstash Redis!');
+                    showSuccess('Script updated successfully!');
                 } else {
                     const error = await response.json();
                     showError('Update failed: ' + error.error);
@@ -363,8 +374,11 @@
             }
         }
 
-        async function deleteScript(id) {
-            if (!confirm('Delete this script from Upstash Redis?')) return;
+        // FIXED DELETE FUNCTION
+        async function deleteScript(id, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
             
             try {
                 const response = await fetch('/api/scripts', {
@@ -375,7 +389,7 @@
 
                 if (response.ok) {
                     await loadScripts();
-                    showSuccess('Script deleted from Upstash Redis!');
+                    showSuccess(`Script "${name}" deleted successfully!`);
                 } else {
                     const error = await response.json();
                     showError('Delete failed: ' + error.error);
@@ -387,12 +401,11 @@
         }
 
         function showSuccess(message) {
-            const existing = document.querySelector('.success-message');
+            const existing = document.querySelector('.success');
             if (existing) existing.remove();
             
             const div = document.createElement('div');
-            div.className = 'success-message';
-            div.style.cssText = 'position:fixed;top:20px;right:20px;background:rgba(76,175,80,0.9);color:white;padding:15px;border-radius:10px;z-index:1000;backdrop-filter:blur(10px);';
+            div.className = 'success';
             div.textContent = message;
             document.body.appendChild(div);
             
@@ -400,12 +413,11 @@
         }
 
         function showError(message) {
-            const existing = document.querySelector('.error-message');
+            const existing = document.querySelector('.error-toast');
             if (existing) existing.remove();
             
             const div = document.createElement('div');
-            div.className = 'error-message';
-            div.style.cssText = 'position:fixed;top:20px;right:20px;background:rgba(244,67,54,0.9);color:white;padding:15px;border-radius:10px;z-index:1000;backdrop-filter:blur(10px);';
+            div.className = 'error-toast';
             div.textContent = message;
             document.body.appendChild(div);
             
