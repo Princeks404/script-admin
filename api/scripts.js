@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -31,15 +31,21 @@ export default async function handler(req, res) {
 
 async function getScripts(req, res) {
   try {
-    const scriptKeys = await kv.keys('script:*');
+    const scriptKeys = await redis.keys('script:*');
     const scripts = {};
     
-    for (const key of scriptKeys) {
-      const scriptData = await kv.get(key);
-      if (scriptData) {
-        const id = key.replace('script:', '');
-        scripts[id] = scriptData;
-      }
+    if (scriptKeys.length > 0) {
+      // Get all scripts in one pipeline for better performance
+      const pipeline = redis.pipeline();
+      scriptKeys.forEach(key => pipeline.get(key));
+      const results = await pipeline.exec();
+      
+      scriptKeys.forEach((key, index) => {
+        if (results[index]) {
+          const id = key.replace('script:', '');
+          scripts[id] = results[index];
+        }
+      });
     }
     
     return res.json(scripts);
@@ -74,10 +80,10 @@ async function createScript(req, res) {
 
   try {
     // Store script with ID
-    await kv.set(`script:${id}`, script);
+    await redis.set(`script:${id}`, JSON.stringify(script));
     
     // Create name-to-id mapping for faster lookups
-    await kv.set(`name:${safeName}`, id);
+    await redis.set(`name:${safeName}`, id);
     
     return res.status(201).json(script);
   } catch (error) {
@@ -94,15 +100,16 @@ async function updateScript(req, res) {
   }
 
   try {
-    const script = await kv.get(`script:${id}`);
-    if (!script) {
+    const scriptData = await redis.get(`script:${id}`);
+    if (!scriptData) {
       return res.status(404).json({ error: 'Script not found' });
     }
 
+    const script = JSON.parse(scriptData);
     script.content = content;
     script.updated = new Date().toISOString();
 
-    await kv.set(`script:${id}`, script);
+    await redis.set(`script:${id}`, JSON.stringify(script));
     return res.json(script);
   } catch (error) {
     console.error('Update script error:', error);
@@ -119,18 +126,20 @@ async function deleteScript(req, res) {
 
   try {
     // Get script data first
-    const script = await kv.get(`script:${id}`);
-    if (!script) {
+    const scriptData = await redis.get(`script:${id}`);
+    if (!scriptData) {
       return res.status(404).json({ error: 'Script not found' });
     }
 
+    const script = JSON.parse(scriptData);
+    
     // Delete script and name mapping
-    await kv.del(`script:${id}`);
-    await kv.del(`name:${script.name}`);
+    await redis.del(`script:${id}`);
+    await redis.del(`name:${script.name}`);
 
     return res.json({ success: true, message: 'Script deleted successfully' });
   } catch (error) {
     console.error('Delete script error:', error);
     return res.status(500).json({ error: 'Failed to delete script' });
   }
-}
+    }
