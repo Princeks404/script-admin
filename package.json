@@ -1,0 +1,13 @@
+{
+  "name": "script-admin",
+  "version": "1.0.0",
+  "description": "Roblox Script Admin Panel with Upstash",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.25.0",
+    "cors": "^2.8.5"
+  }
+}
