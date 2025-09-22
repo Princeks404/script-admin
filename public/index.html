@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚀 Script Manager Admin</title>
+    <title>🚀 PrinceX Script Manager Admin</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -179,8 +179,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 Script Manager Admin</h1>
-            <p>Upload and manage your Roblox scripts</p>
+            <h1>🚀 PrinceX Script Manager Admin</h1>
+            <p>Upload and manage your scripts</p>
         </div>
 
         <div class="stats">
@@ -190,23 +190,16 @@
             </div>
         </div>
 
-        <div class="raw-domain">
-            <strong>🔗 Raw Script Domain:</strong><br>
-            Scripts are accessible at: <code>https://your-raw-domain.vercel.app/script-name</code><br>
-            <small>Update the RAW_DOMAIN variable in this file!</small>
-        </div>
-
         <div class="upload-form">
             <h3 style="margin-bottom: 20px;">📝 Upload New Script</h3>
             <form id="upload-form">
                 <div class="form-group">
                     <label for="script-name">Script Name:</label>
-                    <input type="text" id="script-name" placeholder="auto.farm" required>
-                    <small style="color: rgba(255,255,255,0.7);">Supports dots, letters, numbers, and dashes</small>
+                    <input type="text" id="script-name" placeholder="urmom" required>
                 </div>
                 <div class="form-group">
-                    <label for="script-content">Script Content:</label>
-                    <textarea id="script-content" placeholder="-- Your Roblox script here&#10;print('Hello World!')" required></textarea>
+                    <label for="script-content">Script Here:</label>
+                    <textarea id="script-content" placeholder="Paste Here" required></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary" id="upload-btn">Upload Script</button>
             </form>
@@ -221,7 +214,7 @@
     </div>
 
     <script>
-        const RAW_DOMAIN = 'https://princex-script-raw.vercel.app'; // UPDATE THIS!
+        const RAW_DOMAIN = 'https://princehomemade.my.id/'; // UPDATE THIS!
         let scripts = {};
 
         document.addEventListener('DOMContentLoaded', function() {
