@@ -29,7 +29,11 @@ export default async function handler(req, res) {
           scriptKeys.forEach((key, index) => {
             if (results[index]) {
               const id = key.replace('script:', '');
-              scripts[id] = results[index];
+              // Check if result is already an object or needs parsing
+              const scriptData = typeof results[index] === 'string' 
+                ? JSON.parse(results[index]) 
+                : results[index];
+              scripts[id] = scriptData;
             }
           });
         }
@@ -58,7 +62,7 @@ export default async function handler(req, res) {
           updated: new Date().toISOString()
         };
 
-        await redis.set(`script:${id}`, JSON.stringify(script));
+        await redis.set(`script:${id}`, script);
         await redis.set(`name:${safeName}`, id);
         
         return res.status(201).json(script);
@@ -75,11 +79,15 @@ export default async function handler(req, res) {
           return res.status(404).json({ error: 'Script not found' });
         }
 
-        const updateScript = JSON.parse(scriptData);
+        // Check if scriptData is already an object or needs parsing
+        const updateScript = typeof scriptData === 'string' 
+          ? JSON.parse(scriptData) 
+          : scriptData;
+        
         updateScript.content = updateContent;
         updateScript.updated = new Date().toISOString();
 
-        await redis.set(`script:${updateId}`, JSON.stringify(updateScript));
+        await redis.set(`script:${updateId}`, updateScript);
         return res.json(updateScript);
 
       case 'DELETE':
@@ -94,7 +102,10 @@ export default async function handler(req, res) {
           return res.status(404).json({ error: 'Script not found' });
         }
 
-        const deleteScript = JSON.parse(deleteScriptData);
+        // Check if deleteScriptData is already an object or needs parsing
+        const deleteScript = typeof deleteScriptData === 'string' 
+          ? JSON.parse(deleteScriptData) 
+          : deleteScriptData;
         
         await redis.del(`script:${deleteId}`);
         await redis.del(`name:${deleteScript.name}`);
